@@ -288,6 +288,33 @@ export async function handlerRmInputs(args: string, application: any) {
 }
 
 
+export async function handlerExecInputs(args: string, application: any) {
+    const comParse: any = core.commandParse({ args });
+    const data = comParse?.data;
+
+    let isHelp = false;
+    let region;
+    let appName;
+    let instanceName;
+
+    if (!lodash.isEmpty(data)) {
+        isHelp = data?.h || data?.help;
+        appName = data['application-name']
+        region = data['region']
+        instanceName = data['instance-name']
+    }
+
+    if (lodash.isEmpty(appName)) {
+        appName = application?.appName
+    }
+
+    if (lodash.isEmpty(region)) {
+        region = application?.region
+    }
+    return { isHelp, appName, instanceName, region }
+}
+
+
 export async function setDefault(applicationObject: any) {
     // 参数命名方式修改
     for (var key in applicationObject) {
@@ -297,7 +324,7 @@ export async function setDefault(applicationObject: any) {
             let Key = key.replace(key[0], key[0].toUpperCase());
             // 将数组转换为字符串
             let value = applicationObject[key];
-            if(value instanceof Array){
+            if (value instanceof Array) {
                 value = JSON.stringify(value);
             }
             applicationObject[Key] = value;

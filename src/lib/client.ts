@@ -1,4 +1,6 @@
 import * as core from '@serverless-devs/core';
+import WebSocket from "ws";
+import logger from '../common/logger';
 // @ts-ignore
 const ROAClient = core.popCore.ROAClient;
 const { lodash } = core;
@@ -70,6 +72,7 @@ export default class Client {
         const RescaleApplicationUri = '/pop/v1/sam/app/rescaleApplication';
         const UpdateAppSecurityGroupUri = '/pop/v1/sam/app/updateAppSecurityGroup';
         const RescaleApplicationVerticallyUri = '/pop/v1/sam/app/rescaleApplicationVertically';
+        const GetWebShellTokenUrl = "/pop/v1/sam/instance/webshellToken"
 
         saeClient.rescaleVertically = async function (appId: string, cpu: number, memory: number) {
             const queries = {
@@ -310,7 +313,101 @@ export default class Client {
             return res;
         }
 
+        saeClient.getWebShellToken = async function (regionId: any, appId: any, instancedId: any) {
+            const queries = {
+                RegionId: regionId, AppId: appId, PodName: instancedId
+            }
+            const res = await saeClient.request("GET", GetWebShellTokenUrl, queries, body, headers, requestOption);
+            return res;
+        }
+
+        saeClient.instanceExec = async function (
+            regionId: string,
+            appId: string,
+            instanceId: string,
+            hooks: {
+                onClose: any,
+                onError: any,
+                onStdout: any,
+                onStderr: any
+            },
+        ) {
+            // const messageStdin = 0;
+            const messageStdout = 1;
+            const messageStderr = 2;
+
+            const {
+                onClose = () => { },
+                onError = () => { },
+                onStdout = () => { },
+                onStderr = () => { }
+            } = hooks;
+
+            const res = await saeClient.getWebShellToken(regionId, appId, instanceId)
+            const ws = websocket(regionId, res["Data"]["Token"]);
+            const ticker = setInterval(function () {
+                try {
+                    ws.ping();
+                } catch (e) {
+                    ws.close();
+                }
+            }, 5000);
+
+            ws.on('unexpected-response', function (req, incoming) {
+                var data = [];
+                incoming.on('data', function (chunk) {
+                    data = data.concat(chunk);
+                });
+                incoming.on('end', function () {
+                    const msg = JSON.parse(data.toString());
+                    const err = new Error(msg.ErrorMessage);
+                    onError(err);
+                    ws.close();
+                });
+            });
+            ws.on('close', (err) => {
+                clearInterval(ticker);
+                onClose(err);
+            });
+            ws.on('error', (code, reason) => onError(code, reason));
+            ws.on('ping', (data) => ws.pong(data));
+
+            ws.on('message', (message) => {
+                if (!!message && message.length >= 2) {
+                    const messageType = message[0];
+                    const data = message.slice(1);
+                    if (messageType === messageStdout && onStdout) {
+                        onStdout(data);
+                    } else if (messageType === messageStderr && onStderr) {
+                        onStderr(data);
+                    }
+                }
+            });
+
+            await (async () => {
+                new Promise((resolve) => (ws.onopen = resolve));
+            });
+
+            return {
+                websocket: ws,
+                close: () => ws.close(),
+                sendMessage: (data) => {
+                    ws.send(data);
+                }
+            };
+        }
+
         this.saeClient = saeClient;
         return saeClient;
     }
+}
+
+function websocket(region: string, token: string) {
+    const protocol = 'wss://';
+    const hostName = 'sae-webshell.console.aliyun.com';
+    const socketURL = `${protocol}${hostName}/websocket/eamWebshell?tokenId=${token}&region=${region}`;
+
+    return new WebSocket(socketURL, {
+        origin: 'https://sae.console.aliyun.com',
+    });
 }

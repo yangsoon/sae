@@ -12,6 +12,7 @@ import logger from './common/logger';
 import Oss from './lib/oss.service';
 import { writeCreatCache, writeDeployCache } from './common/cache';
 import WriteFile from './lib/write-file';
+import ExecConnector from './cmd/exec';
 
 const { lodash } = core;
 
@@ -431,5 +432,17 @@ export default class SaeComponent {
 
     vm.stop();
     logger.success('删除成功');
+  }
+
+  public async exec(inputs: InputProps) {
+    const { args, props: { application } } = inputs;
+    const { isHelp, appName, instanceName, region } = await inputHandler.handlerExecInputs(args, application);
+    const credentials = await core.getCredential(inputs.project.access);
+    const saeClient = await Client.setSaeClient(region, credentials);
+    if (isHelp) {
+      core.help(HELP.RESCALE);
+    }
+    const connector = new ExecConnector({ appName, instanceName, region, saeClient });
+    return await connector.Exec()
   }
 }
