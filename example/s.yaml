@@ -1,32 +1,62 @@
-edition: 1.0.0          #  命令行YAML规范版本，遵循语义化版本（Semantic Versioning）规范
-name: sae-app           #  项目名称
-access: default         #  秘钥别名
+edition: 1.0.0 #  命令行YAML规范版本，遵循语义化版本（Semantic Versioning）规范
+name: sae-app #  项目名称
+access: default #  秘钥别名
 
 services:
   sae-test:
-    component:  ../lib
+    component: ../
     props:
       region: cn-hangzhou
       namespace: # 选填
-        id: cn-hangzhou:test
+        id: cn-hangzhou:demo
         name: test-name
         description: namespace desc
       vpcConfig: # 选填
         vpcId: vpc-bxxxxc7pobl
         vSwitchId: vsw-bp17xxxxpfg9zr
         securityGroupId: sg-bp1xxxxxpzx4db
+      configMaps: # 选填
+        - name: test-name
+          data:
+            kafkaConfig: '{"test": 1, "hello": "world"}'
+      scalingRules:
+        - name: cpu-checker
+          enable: true
+          meticConfig:
+            maxReplicas: 10
+            minReplicas: 1
+            metrics:
+              - type: CPU
+                targetAverageUtilization: 20
+              - type: MEMORY
+                targetAverageUtilization: 30
+              - type: tcpActiveConn
+                targetAverageUtilization: 20
+      logConfigs:
+        sls:
+          - project: test
+            logstore: sae
+            logtail: test
+            logDir: "/tmp/a.log"
+        kafka:
+          - endpoint: "10.0.X.XXX:XXXX,10.0.X.XXX:XXXX,10.0.X.XXX:XXXX"
+            instanceId: alikafka_pre-cn-7pp2l8kr****
+            configs:
+              - logType: "file_log"
+                logDir: "/tmp/a.log"
+                kafkaTopic: "test2"
       application:
         name: test
+        namespaceId: cn-hangzhou:demo
         description: This is a test description.
         code:
-#          image: registry.cn-hangzhou.aliyuncs.com/namespace4sae/repo4sae:v1
           package: https://bucket4sae.oss-cn-hangzhou.aliyuncs.com/demo.jar
-#          package:
-#            path: 路径
-#            bucket:
-#              region: 上传的oss地区
-#              name: 上传的oss名字
         cpu: 500
         memory: 1024
         replicas: 1
         port: 8088
+        volumeMounts:
+          configMap:
+            - name: test-name
+              mountPath: /etc/config
+              key: kafkaConfig

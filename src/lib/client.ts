@@ -1,7 +1,9 @@
 import * as core from '@serverless-devs/core';
+import ConfigMap from '../common/type'
 // @ts-ignore
 const ROAClient = core.popCore.ROAClient;
 const { lodash } = core;
+
 
 export async function vpcAvailable(vpcId, region, credentials) {
 
@@ -70,6 +72,7 @@ export default class Client {
         const RescaleApplicationUri = '/pop/v1/sam/app/rescaleApplication';
         const UpdateAppSecurityGroupUri = '/pop/v1/sam/app/updateAppSecurityGroup';
         const RescaleApplicationVerticallyUri = '/pop/v1/sam/app/rescaleApplicationVertically';
+        const CreateConfigMapUri = "/pop/v1/sam/configmap/configMap";
 
         saeClient.rescaleVertically = async function (appId: string, cpu: number, memory: number) {
             const queries = {
@@ -307,6 +310,15 @@ export default class Client {
             const appId = data['Data']['Applications'][0]['AppId'];
             applicationObject.AppId = appId;
             const res = await saeClient.request("POST", DeployApplicationUri, applicationObject, body, headers, requestOption);
+            return res;
+        }
+
+        saeClient.createConfigMap = async function (configMap: ConfigMap) {
+            let params = new URLSearchParams({
+                "name": configMap.name,
+                "namespaceId": configMap.namespaceId,
+            });
+            const res = await saeClient.request("POST", `${CreateConfigMapUri}?${params.toString()}`, configMap.data, body, headers, requestOption);
             return res;
         }
 

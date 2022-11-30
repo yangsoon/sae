@@ -10,7 +10,7 @@ Tags: #标签详情
 Category: 其它
 Commands:
   Build & Deploy:
-    deploy: Deploy local application online 
+    deploy: Deploy local application online
     remove: Delete online application
     start: Start online application
     stop: Stop online application

@@ -1,5 +1,7 @@
 import * as core from '@serverless-devs/core';
+import { ConfigMap, Namespace } from '../common/type';
 import { cpuLimit, memoryLimit } from './help/constant';
+import logger from '../common/logger';
 const { lodash } = core;
 
 export async function checkInputs(inputs: any) {
@@ -297,11 +299,68 @@ export async function setDefault(applicationObject: any) {
             let Key = key.replace(key[0], key[0].toUpperCase());
             // 将数组转换为字符串
             let value = applicationObject[key];
-            if(value instanceof Array){
+            if (value instanceof Array) {
                 value = JSON.stringify(value);
             }
             applicationObject[Key] = value;
             delete (applicationObject[key]);
         }
+    }
+}
+
+
+
+export async function handlerConfigMapInputs(args: string, namespace: Namespace, configMaps: Array<ConfigMap>, application: any) {
+    const comParse: any = core.commandParse({ args });
+    const data = comParse?.data;
+
+    let cmName;
+    let cmData;
+    let defaultNamespaceId;
+    let namespaceId;
+    let description;
+    let region;
+    let isHelp = false;
+
+    defaultNamespaceId = getDefaultNamespaceId(namespace, application);
+
+    if (!lodash.isEmpty(data)) {
+        isHelp = data?.h || data?.help;
+        cmName = data['name'];
+        namespaceId = data['namespace-id'];
+        cmData = data['data'];
+        description = data['description']
+        region = data['region']
+    }
+    if (lodash.isEmpty(namespaceId)) {
+        namespaceId = defaultNamespaceId;
+    }
+
+    if (lodash.isEmpty(region)) {
+        region = application?.region;
+    }
+    if (!isHelp) {
+        if (lodash.isEmpty(cmName)) {
+            throw new core.CatchableError('参数 name 不能为空');
+        }
+        if (lodash.isEmpty(namespaceId)) {
+            throw new core.CatchableError('参数 namespace-id 不能为空');
+        }
+        if (lodash.isEmpty(cmData)) {
+            throw new core.CatchableError('参数 data 不能为空');
+        }
+        if (lodash.isEmpty(region)) {
+            throw new core.CatchableError('参数 region 不能为空');
+        }
+    }
+    return { isHelp, cmName, namespaceId, cmData, region, description }
+}
+
+function getDefaultNamespaceId(namespace: Namespace, application: any) {
+    if (!lodash.isEmpty(namespace.id)) {
+        return namespace.id
+    }
+    if (!lodash.isEmpty(application?.namespaceId)) {
+        return application?.namespaceId
     }
 }

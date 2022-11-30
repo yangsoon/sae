@@ -12,6 +12,8 @@ import logger from './common/logger';
 import Oss from './lib/oss.service';
 import { writeCreatCache, writeDeployCache } from './common/cache';
 import WriteFile from './lib/write-file';
+import ConfigMapCmd from './cmd/configMap';
+import { ConfigMap } from './common/type';
 
 const { lodash } = core;
 
@@ -431,5 +433,20 @@ export default class SaeComponent {
 
     vm.stop();
     logger.success('删除成功');
+  }
+
+  async configmap(inputs: InputProps) {
+    const { args, props } = inputs;
+    const { isHelp, } = await inputHandler.handlerConfigMapInputs(args, namespace, configMaps, application);
+    if (isHelp) {
+      core.help(HELP.REMOVE);
+      return;
+    }
+    // logger.info(`name: ${cmName}, namespace: ${namespaceId}, data: ${cmData}`);
+    // const credentials = await core.getCredential(inputs.project?.access);
+    // let saeClient = await Client.setSaeClient(region, credentials);
+    // let cmd = new ConfigMapCmd(saeClient);
+    // let res = await cmd.add(new ConfigMap(cmName, namespaceId, cmData, description));
+    // logger.info(res);
   }
 }
